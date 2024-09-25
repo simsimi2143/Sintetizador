@@ -129,8 +129,8 @@ elif option == 'YouTube':
         text = transcripcion[0].page_content
         summary = generate_summary(text, num_sentences=5)
         
-        st.write("Transcripción del video:")
-        st.write(wrap(text))
+        #st.write("Transcripción del video:")
+        #st.write(wrap(text))
         
         st.write("Resumen generado del video:")
         st.write(wrap(summary))
