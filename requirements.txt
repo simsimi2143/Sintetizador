@@ -1,4 +1,4 @@
-langchain==0.2.15
+langchain
 networkx==3.1
 nltk==3.8.1
 numpy==1.22.3
