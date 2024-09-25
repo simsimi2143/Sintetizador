@@ -123,16 +123,21 @@ elif option == 'YouTube':
         transcripcion = loader.load()
         
         st.write(f"Video de: {transcripcion[0].metadata['author']}" +
-                 f" con un tamaño de {transcripcion[0].metadata['length']} segundos")
+                 f" con una duración de {transcripcion[0].metadata['length']} segundos")
         st.write(f"Título: {transcripcion[0].metadata['title']}")
         
         text = transcripcion[0].page_content
+        
+        # Checkbox para mostrar la transcripción completa
+        mostrar_transcripcion = st.checkbox('Mostrar transcripción completa')
+        
+        if mostrar_transcripcion:
+            st.write("Transcripción completa:")
+            st.write(wrap(text))
+        
         summary = generate_summary(text, num_sentences=5)
         
         st.write("Resumen generado del video:")
-        st.write(wrap(summary))
-        
-        st.write("Transcripción del video:")
         st.write(wrap(summary))
         
         
