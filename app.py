@@ -18,7 +18,7 @@ import re
 nltk.download('stopwords')
 nltk.download('punkt')
 
-# --- FUNCIONES PARA CARGAR TEXTOS DE ARCHIVOS --- 
+# --- FUNCIONES PARA CARGAR TEXTOS DE ARCHIVOS ---
 def extract_text_from_pdf(pdf_file):
     text = ""
     reader = PyPDF2.PdfReader(pdf_file)
