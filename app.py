@@ -132,5 +132,4 @@ elif option == 'YouTube':
         st.write("Resumen generado del video:")
         st.write(wrap(summary))
         
-        st.write("Transcripción del video:")
-        st.write(wrap(summary))
+        
