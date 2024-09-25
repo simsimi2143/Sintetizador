@@ -116,27 +116,35 @@ if option == 'Archivo':
 
 # Procesar un video de YouTube
 elif option == 'YouTube':
-    youtube_link = st.text_input('Introduce la URL del video de YouTube y luego presione enter')
+    youtube_link = st.text_input('Introduce la URL del video de YouTube')
     
     if youtube_link:
-        loader = YoutubeLoader.from_youtube_url(youtube_link, add_video_info=True, language=["es"])
-        transcripcion = loader.load()
+        try:
+            loader = YoutubeLoader.from_youtube_url(youtube_link, add_video_info=True, language=["es"])
+            transcripcion = loader.load()
+            
+            if transcripcion and len(transcripcion) > 0:  # Verificar que se haya cargado correctamente
+                st.write(f"Video de: {transcripcion[0].metadata.get('author', 'Desconocido')}" +
+                         f" con un tamaño de {transcripcion[0].metadata.get('length', 'Desconocido')} segundos")
+                st.write(f"Título: {transcripcion[0].metadata.get('title', 'Sin título')}")
+                
+                text = transcripcion[0].page_content
+
+                # Checkbox para mostrar la transcripción completa
+                mostrar_transcripcion = st.checkbox('Mostrar transcripción completa')
+                
+                if mostrar_transcripcion:
+                    st.write("Transcripción completa:")
+                    st.write(wrap(text))
+                
+                summary = generate_summary(text, num_sentences=5)
+                
+                st.write("Resumen generado del video:")
+                st.write(wrap(summary))
+            else:
+                st.error("No se pudo cargar la transcripción. Por favor, verifica la URL del video.")
         
-        st.write(f"Video de: {transcripcion[0].metadata['author']}" +
-                 f" con un tamaño de {transcripcion[0].metadata['length']} segundos")
-        st.write(f"Título: {transcripcion[0].metadata['title']}")
-        
-        text = transcripcion[0].page_content
-        
-        # Checkbox para mostrar la transcripción completa
-        mostrar_transcripcion = st.checkbox('Mostrar transcripción completa')
-        
-        if mostrar_transcripcion:
-            st.write("Transcripción completa:")
-            st.write(wrap(text))
-        
-        summary = generate_summary(text, num_sentences=5)
-        
-        st.write("Resumen generado del video:")
-        st.write(wrap(summary))
+        except Exception as e:
+            st.error(f"Se produjo un error al procesar el video: {e}")
+
 
