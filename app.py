@@ -130,21 +130,22 @@ elif option == 'YouTube':
                 
                 text = transcripcion[0].page_content
 
-                # Checkbox para mostrar la transcripción completa
-                mostrar_transcripcion = st.checkbox('Mostrar transcripción completa')
+                # Selectbox para elegir si mostrar transcripción o resumen
+                opcion_mostrar = st.selectbox(
+                    '¿Qué desea ver?', 
+                    ('Seleccionar', 'Transcripción', 'Resumen')
+                )
                 
-                if mostrar_transcripcion:
+                if opcion_mostrar == 'Transcripción':
                     st.write("Transcripción completa:")
                     st.write(wrap(text))
                 
-                summary = generate_summary(text, num_sentences=5)
-                
-                st.write("Resumen generado del video:")
-                st.write(wrap(summary))
+                elif opcion_mostrar == 'Resumen':
+                    summary = generate_summary(text, num_sentences=5)
+                    st.write("Resumen generado del video:")
+                    st.write(wrap(summary))
             else:
                 st.error("No se pudo cargar la transcripción. Por favor, verifica la URL del video.")
         
         except Exception as e:
             st.error(f"Se produjo un error al procesar el video: {e}")
-
-
