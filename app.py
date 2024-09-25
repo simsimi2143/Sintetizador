@@ -116,7 +116,7 @@ if option == 'Archivo':
 
 # Procesar un video de YouTube
 elif option == 'YouTube':
-    youtube_link = st.text_input('Introduce la URL del video de YouTube')
+    youtube_link = st.text_input('Introduce la URL del video de YouTube y luego presione enter')
     
     if youtube_link:
         loader = YoutubeLoader.from_youtube_url(youtube_link, add_video_info=True, language=["es"])
@@ -127,7 +127,16 @@ elif option == 'YouTube':
         st.write(f"Título: {transcripcion[0].metadata['title']}")
         
         text = transcripcion[0].page_content
+        
+        # Checkbox para mostrar la transcripción completa
+        mostrar_transcripcion = st.checkbox('Mostrar transcripción completa')
+        
+        if mostrar_transcripcion:
+            st.write("Transcripción completa:")
+            st.write(wrap(text))
+        
         summary = generate_summary(text, num_sentences=5)
         
         st.write("Resumen generado del video:")
         st.write(wrap(summary))
+
