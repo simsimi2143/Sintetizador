@@ -1,5 +1,6 @@
 langchain==0.2.15
 langchain-community==0.2.14
+youtube-transcript-api==0.6.2
 networkx==3.1
 nltk==3.8.1
 numpy==1.22.3
