@@ -2,7 +2,7 @@ import streamlit as st
 import PyPDF2
 import docx
 from pptx import Presentation
-from langchain.document_loaders import YoutubeLoader
+from langchain_community.document_loaders import YoutubeLoader
 from langchain.chains.summarize import load_summarize_chain
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 import textwrap
