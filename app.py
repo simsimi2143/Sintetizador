@@ -119,33 +119,15 @@ elif option == 'YouTube':
     youtube_link = st.text_input('Introduce la URL del video de YouTube')
     
     if youtube_link:
-        try:
-            loader = YoutubeLoader.from_youtube_url(youtube_link, add_video_info=True, language=["es"])
-            transcripcion = loader.load()
-            
-            if transcripcion and len(transcripcion) > 0:  # Verificar que se haya cargado correctamente
-                st.write(f"Video de: {transcripcion[0].metadata.get('author', 'Desconocido')}" +
-                         f" con un tamaño de {transcripcion[0].metadata.get('length', 'Desconocido')} segundos")
-                st.write(f"Título: {transcripcion[0].metadata.get('title', 'Sin título')}")
-                
-                text = transcripcion[0].page_content
-
-                # Selectbox para elegir si mostrar transcripción o resumen
-                opcion_mostrar = st.selectbox(
-                    '¿Qué desea ver?', 
-                    ('Seleccionar', 'Transcripción', 'Resumen')
-                )
-                
-                if opcion_mostrar == 'Transcripción':
-                    st.write("Transcripción completa:")
-                    st.write(wrap(text))
-                
-                elif opcion_mostrar == 'Resumen':
-                    summary = generate_summary(text, num_sentences=5)
-                    st.write("Resumen generado del video:")
-                    st.write(wrap(summary))
-            else:
-                st.error("No se pudo cargar la transcripción. Por favor, verifica la URL del video.")
+        loader = YoutubeLoader.from_youtube_url(youtube_link, add_video_info=True, language=["es"])
+        transcripcion = loader.load()
         
-        except Exception as e:
-            st.error(f"Se produjo un error al procesar el video: {e}")
+        st.write(f"Video de: {transcripcion[0].metadata['author']}" +
+                 f" con un tamaño de {transcripcion[0].metadata['length']} segundos")
+        st.write(f"Título: {transcripcion[0].metadata['title']}")
+        
+        text = transcripcion[0].page_content
+        summary = generate_summary(text, num_sentences=5)
+        
+        st.write("Resumen generado del video:")
+        st.write(wrap(summary))
