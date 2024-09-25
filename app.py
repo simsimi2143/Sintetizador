@@ -122,15 +122,15 @@ elif option == 'YouTube':
         loader = YoutubeLoader.from_youtube_url(youtube_link, add_video_info=True, language=["es"])
         transcripcion = loader.load()
         
-        #st.write(f"Video de: {transcripcion[0].metadata['author']}" +
-        #         f" con un tamaño de {transcripcion[0].metadata['length']} segundos")
-        #st.write(f"Título: {transcripcion[0].metadata['title']}")
+        st.write(f"Video de: {transcripcion[0].metadata['author']}" +
+                 f" con un tamaño de {transcripcion[0].metadata['length']} segundos")
+        st.write(f"Título: {transcripcion[0].metadata['title']}")
         
         text = transcripcion[0].page_content
         summary = generate_summary(text, num_sentences=5)
         
-        st.write("Transcripción del video:")
-        st.write(wrap(text))
+        #st.write("Transcripción del video:")
+        #st.write(wrap(text))
         
         st.write("Resumen generado del video:")
         st.write(wrap(summary))
