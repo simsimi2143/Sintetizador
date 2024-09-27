@@ -72,3 +72,34 @@ WS_norm(Vi) = WS(Vi) / Σ WS(Vk)
 ## Conclusión
 
 TextRank es un algoritmo poderoso y versátil para el procesamiento de texto, que combina la teoría de grafos con el procesamiento del lenguaje natural para extraer información importante de manera eficiente.
+
+# Guia de instalación del proyecto
+
+REQUISISTOS:
+```
+python 3.8 o superior
+git 
+```
+
+Clonar el repositorio mediante el siguiente comando:
+
+```bash
+$ git clone https://github.com/simsimi2143/Sintetizador.git
+```
+
+Instalar las librerias necesarias para ejecutar el proyecto mediante el siguiente comando:
+
+```bash
+pip install -r requirements.txt
+```
+
+Para ejecutar el proyecto simplemente debe ejecuter lo siguiente:
+
+```bash
+cd .\Sintetizador\
+```
+
+ya dentro de la carpeta de sintetiazador se ejecuta el siguiente comando:
+```bash
+\Sintetizador> streamlit run app.py
+```
