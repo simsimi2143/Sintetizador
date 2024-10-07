@@ -123,7 +123,7 @@ elif option == 'YouTube':
         transcripcion = loader.load()
         
         st.write(f"Video de: {transcripcion[0].metadata['author']}" +
-                 f" con una duración de {transcripcion[0].metadata['length']} segundos")
+                 f" con un tamaño de {transcripcion[0].metadata['length']} segundos")
         st.write(f"Título: {transcripcion[0].metadata['title']}")
         
         text = transcripcion[0].page_content
@@ -139,5 +139,3 @@ elif option == 'YouTube':
         
         st.write("Resumen generado del video:")
         st.write(wrap(summary))
-        
-        
