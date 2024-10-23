@@ -103,3 +103,7 @@ ya dentro de la carpeta de sintetiazador se ejecuta el siguiente comando:
 ```bash
 \Sintetizador> streamlit run app.py
 ```
+
+### vista previa de la visualización de la implementación
+
+<img src='https://media.discordapp.net/attachments/1090822505238892556/1298439408244228146/image.png?ex=6719916e&is=67183fee&hm=919e8cd756e5cb62e84de0cd9f2e7cf2ebc34cdc2437eb28013d9a979d2e16d6&=&format=webp&quality=lossless&width=670&height=570'>
