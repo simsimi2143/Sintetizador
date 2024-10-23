@@ -14,31 +14,44 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import networkx as nx
 import re
+import pandas as pd  # Importar Pandas para la tabla
 
 nltk.download('stopwords')
 nltk.download('punkt')
 
 # --- FUNCIONES PARA CARGAR TEXTOS DE ARCHIVOS ---
 def extract_text_from_pdf(pdf_file):
-    text = ""
-    reader = PyPDF2.PdfReader(pdf_file)
-    for page in reader.pages:
-        text += page.extract_text()
-    return text
+    try:
+        text = ""
+        reader = PyPDF2.PdfReader(pdf_file)
+        for page in reader.pages:
+            text += page.extract_text()
+        return text
+    except Exception as e:
+        st.error(f"Error al procesar el archivo PDF: {str(e)}")
+        return None
 
 def extract_text_from_word(docx_file):
-    doc = docx.Document(docx_file)
-    text = "\n".join([para.text for para in doc.paragraphs])
-    return text
+    try:
+        doc = docx.Document(docx_file)
+        text = "\n".join([para.text for para in doc.paragraphs])
+        return text
+    except Exception as e:
+        st.error(f"Error al procesar el archivo DOCX: {str(e)}")
+        return None
 
 def extract_text_from_ppt(ppt_file):
-    prs = Presentation(ppt_file)
-    text = ""
-    for slide in prs.slides:
-        for shape in slide.shapes:
-            if hasattr(shape, "text"):
-                text += shape.text + "\n"
-    return text
+    try:
+        prs = Presentation(ppt_file)
+        text = ""
+        for slide in prs.slides:
+            for shape in slide.shapes:
+                if hasattr(shape, "text"):
+                    text += shape.text + "\n"
+        return text
+    except Exception as e:
+        st.error(f"Error al procesar el archivo PPTX: {str(e)}")
+        return None
 
 # --- FUNCIONES PARA PROCESAR Y GENERAR RESUMEN ---
 def split_long_text_by_words(text, max_words=100):
@@ -90,16 +103,24 @@ def generate_summary(text, num_sentences=5):
 def wrap(x):
     return textwrap.fill(x, replace_whitespace=False, fix_sentence_endings=True)
 
+# --- FUNCIÓN PARA CONTAR PALABRAS ---
+def count_words(text):
+    return len(text.split())
+
 # --- INTERFAZ CON STREAMLIT ---
 st.title('Generador de Resúmenes a partir de Archivos o Videos de YouTube')
 
 # Opciones de entrada
 option = st.selectbox('Selecciona una opción:', ('Archivo', 'YouTube'))
 
+
+
 # Procesar un archivo
 if option == 'Archivo':
     file = st.file_uploader('Sube un archivo', type=['pdf', 'docx', 'pptx'])
-    
+    # --- SECCIÓN DE DISEÑO ---
+    # Crear columnas para distribuir la transcripción y el resumen
+    col1, spacer, col2 = st.columns([5, 1, 5])
     if file is not None:
         # Streamlit trabaja con archivos subidos como bytes, por lo que los convertimos adecuadamente
         if file.name.endswith('.pdf'):
@@ -111,34 +132,92 @@ if option == 'Archivo':
         
         if text:
             summary = generate_summary(text, num_sentences=5)
-            st.write("Resumen generado del archivo:")
-            st.write(wrap(summary))
+            
+            # Contar palabras en la transcripción completa y en el resumen
+            total_words_transcription = count_words(text)
+            total_words_summary = count_words(summary)
+            
+            # Crear tabla con los datos
+            summary_data = {
+                'Descripción': ['Palabras en la transcripción', 'Palabras en el resumen'],
+                'Cantidad de Palabras': [total_words_transcription, total_words_summary]
+            }
+            
+            #summary_df = pd.DataFrame(summary_data)
+            
+            # Mostrar la transcripción en la primera columna
+            with col1:
+                st.subheader("Transcripción completa")
+                st.write(text)  # Muestra la transcripción completa
+                st.metric(label="Palabras Transcripción", value=total_words_transcription)
+            
+            # Mostrar el resumen en la segunda columna
+            with col2:
+                st.subheader("Resumen generado")
+                st.write(summary)  # Muestra el resumen generado
+                st.metric(label="Palabras Resumen", value=total_words_summary)
+            
+            # st.write("Resumen generado del archivo:")
+            # st.write(wrap(summary))
+            
+            # Mostrar tabla con las estadísticas
+            #st.table(summary_df)
 
 # Procesar un video de YouTube
 elif option == 'YouTube':
     youtube_link = st.text_input('Introduce la URL del video de YouTube')
-    
+    # --- SECCIÓN DE DISEÑO ---
+    # Crear columnas para distribuir la transcripción y el resumen
+    col1, spacer, col2 = st.columns([5, 1, 5])
     if youtube_link:
-        loader = YoutubeLoader.from_youtube_url(youtube_link, add_video_info=True, language=["es"])
-        transcripcion = loader.load()
+        try:
+            loader = YoutubeLoader.from_youtube_url(youtube_link, add_video_info=True, language=["es"])
+            transcripcion = loader.load()
+            
+            
+            text = transcripcion[0].page_content
+            
+            # Checkbox para mostrar la transcripción completa
+            # mostrar_transcripcion = st.checkbox('Mostrar transcripción completa')
+            
+            #if mostrar_transcripcion:
+            #    st.write("Transcripción completa:")
+            #    st.write(wrap(text))
+            
+            summary = generate_summary(text, num_sentences=5)
+            
+            # Contar palabras en la transcripción completa y en el resumen
+            total_words_transcription = count_words(text)
+            total_words_summary = count_words(summary)
+            
+            # Crear tabla con los datos
+            summary_data = {
+                'Descripción': ['Palabras en la transcripción', 'Palabras en el resumen'],
+                'Cantidad de Palabras': [total_words_transcription, total_words_summary]
+            }
+            
+            summary_df = pd.DataFrame(summary_data)
+            
+            # st.write("Resumen generado del video:")
+            # st.write(wrap(summary))
+            
+            # Mostrar la transcripción en la primera columna
+            with col1:
+                st.header("Transcripción completa")
+                st.metric(label="Palabras Transcripción", value=total_words_transcription)
+                st.write(text)  # Muestra la transcripción completa
         
-        st.write(f"Video de: {transcripcion[0].metadata['author']}" +
-                 f" con una duración de  {transcripcion[0].metadata['length']} segundos")
-        st.write(f"Título del video: {transcripcion[0].metadata['title']}")
-        #st.write(f"Fecha de publicación: {transcripcion[0].metadata['publish_date']}")
-        #st.write(transcripcion[0].metadata)
-
+        # Mostrar el resumen en la segunda columna
+            with col2:
+                st.header("Resumen generado")
+                st.metric(label="Palabras Resumen", value=total_words_summary)
+                st.subheader(f"Video de: {transcripcion[0].metadata['author']}" +
+                     f" con una duración de  {transcripcion[0].metadata['length']} segundos")
+                st.subheader(f"Título del video: {transcripcion[0].metadata['title']}")
+                st.write(summary)  # Muestra el resumen generado
+            
+            # Mostrar tabla con las estadísticas
+            # st.table(summary_df)
         
-        text = transcripcion[0].page_content
-        
-        # Checkbox para mostrar la transcripción completa
-        mostrar_transcripcion = st.checkbox('Mostrar transcripción completa')
-        
-        if mostrar_transcripcion:
-            st.write("Transcripción completa:")
-            st.write(wrap(text))
-        
-        summary = generate_summary(text, num_sentences=5)
-        
-        st.write("Resumen generado del video:")
-        st.write(wrap(summary))
+        except Exception as e:
+            st.error(f"Error al obtener la información del video. Vuelve a intentar con otro enlace. Detalles: {str(e)}")
