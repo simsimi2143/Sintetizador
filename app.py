@@ -2,22 +2,23 @@ import streamlit as st
 import PyPDF2
 import docx
 from pptx import Presentation
-from langchain_community.document_loaders import YoutubeLoader
-from langchain.chains.summarize import load_summarize_chain
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-import textwrap
-import numpy as np
-import nltk
-from nltk.corpus import stopwords
-from nltk.tokenize import sent_tokenize, word_tokenize
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
-import networkx as nx
+from youtube_transcript_api import YouTubeTranscriptApi
+import spacy
+import pytextrank
 import re
-import pandas as pd  # Importar Pandas para la tabla
+import networkx as nx
+import pandas as pd
+from openai import OpenAI
 
-nltk.download('stopwords')
-nltk.download('punkt')
+# Cargar el modelo de spaCy para español
+nlp = spacy.load("es_core_news_md")
+nlp.add_pipe("textrank")
+
+# Configurar el cliente de OpenAI (NVIDIA API)
+client = OpenAI(
+    base_url="https://integrate.api.nvidia.com/v1",
+    api_key = "tu_clave_api_secreta"
+)
 
 # --- FUNCIONES PARA CARGAR TEXTOS DE ARCHIVOS ---
 def extract_text_from_pdf(pdf_file):
@@ -54,75 +55,108 @@ def extract_text_from_ppt(ppt_file):
         return None
 
 # --- FUNCIONES PARA PROCESAR Y GENERAR RESUMEN ---
-def split_long_text_by_words(text, max_words=100):
+def chunk_text(text, words_per_chunk=200):
+    """
+    Divide el texto en chunks de aproximadamente n palabras,
+    intentando no cortar en medio de una palabra.
+    """
     words = text.split()
-    return [' '.join(words[i:i + max_words]) for i in range(0, len(words), max_words)]
+    chunks = []
+    current_chunk = []
+    current_count = 0
 
-def split_text(text):
-    sentences = re.split(r'(?<=[.!?])\s+', text)
-    sentences = [sent.strip() for sent in sentences if sent.strip()]
-    
-    if len(sentences) < 5:
-        sentences = split_long_text_by_words(text)
-    
-    return sentences
+    for word in words:
+        current_chunk.append(word)
+        current_count += 1
 
-def preprocess_text(text):
-    sentences = split_text(text)
-    sentences = [sent for sent in sentences if len(sent.split()) > 3]
-    return sentences
+        # Si llegamos al límite de palabras o encontramos un punto
+        if current_count >= words_per_chunk or word.endswith('.'):
+            chunks.append(' '.join(current_chunk))
+            current_chunk = []
+            current_count = 0
 
-def calculate_sentence_scores(sentences):
-    if len(sentences) < 2:
-        return {0: 1.0}
+    # Añadir el último chunk si quedaron palabras
+    if current_chunk:
+        chunks.append(' '.join(current_chunk))
 
-    tfidf = TfidfVectorizer(stop_words=stopwords.words('spanish'))
-    sentence_vectors = tfidf.fit_transform(sentences)
-    sim_mat = cosine_similarity(sentence_vectors)
-    
-    nx_graph = nx.from_numpy_array(sim_mat)
-    scores = nx.pagerank(nx_graph)
-    
-    return scores
+    return chunks
 
 def generate_summary(text, num_sentences=5):
-    original_sentences = preprocess_text(text)
-    
-    if len(original_sentences) <= num_sentences:
-        return text
-    
-    sentence_scores = calculate_sentence_scores(original_sentences)
-    ranked_sentences = sorted(((sentence_scores[i], s) for i, s in enumerate(original_sentences)), reverse=True)
-    selected_sentences = [s for _, s in ranked_sentences[:num_sentences]]
-    
-    summary_sentences = sorted(selected_sentences, key=lambda s: original_sentences.index(s))
-    summary = ' '.join(summary_sentences)
-    
-    return summary
+    # Limpiar el texto
+    text = text.replace("\n", "").replace("\r", "")
+    text = re.sub(' +', ' ', text)
 
-def wrap(x):
-    return textwrap.fill(x, replace_whitespace=False, fix_sentence_endings=True)
+    # Dividir el texto en chunks más grandes
+    chunks = chunk_text(text, words_per_chunk=200)
+
+    # Crear un nuevo texto con los chunks separados por puntos
+    processed_text = ". ".join(chunks)
+
+    # Procesar el texto con spaCy
+    doc = nlp(processed_text)
+
+    # Crear un grafo de similitud
+    sentences = list(doc.sents)
+    G = nx.Graph()
+
+    # Añadir nodos (chunks)
+    for i, sent in enumerate(sentences):
+        G.add_node(i, text=sent.text)
+
+    # Añadir aristas basadas en similitud
+    threshold = 0.90  # Ajusta el umbral aquí
+    for i in range(len(sentences)):
+        for j in range(i + 1, len(sentences)):
+            similarity = sentences[i].similarity(sentences[j])
+            if similarity > threshold:
+                G.add_edge(i, j, weight=similarity)
+
+    # Generar el resumen basado en los nodos conectados
+    important_sentences = set()
+    for i in G.nodes:
+        if G.degree[i] > 0:  # Si el nodo tiene conexiones, es relevante
+            important_sentences.add(i)
+
+    # Ordenar las oraciones importantes por aparición en el texto original
+    summary = [sentences[i].text for i in sorted(important_sentences)]
+
+    return ' '.join(summary[:num_sentences])
 
 # --- FUNCIÓN PARA CONTAR PALABRAS ---
 def count_words(text):
     return len(text.split())
 
+# --- FUNCIÓN PARA GENERAR CUESTIONARIO ---
+def generate_quiz(text):
+    try:
+        completion = client.chat.completions.create(
+            model="nvidia/llama-3.1-nemotron-70b-instruct",
+            messages=[{"role": "user", "content": f"Genera un cuestionario de 5 preguntas a partir del siguiente texto: {text}"}],
+            temperature=0.5,
+            top_p=1,
+            max_tokens=1024,
+            stream=False
+        )
+        return completion.choices[0].message.content
+    except Exception as e:
+        st.error(f"Error al generar el cuestionario: {str(e)}")
+        return None
+
 # --- INTERFAZ CON STREAMLIT ---
-st.title('Generador de Resúmenes a partir de Archivos o Videos de YouTube')
+st.title('Generador de Resúmenes y Cuestionarios a partir de Archivos o Videos de YouTube')
 
-# Opciones de entrada
-option = st.selectbox('Selecciona una opción:', ('Archivo', 'YouTube'))
-
-
+# Barra lateral (sidebar) para seleccionar la opción
+with st.sidebar:
+    st.header("Opciones")
+    option = st.radio("Selecciona una opción:", ("Archivo", "YouTube"))
+    if option == "YouTube":
+        youtube_option = st.radio("¿Qué deseas hacer con el video de YouTube?", ("Generar resumen", "Generar cuestionario"))
 
 # Procesar un archivo
-if option == 'Archivo':
+if option == "Archivo":
     file = st.file_uploader('Sube un archivo', type=['pdf', 'docx', 'pptx'])
-    # --- SECCIÓN DE DISEÑO ---
-    # Crear columnas para distribuir la transcripción y el resumen
-    col1, spacer, col2 = st.columns([5, 1, 5])
     if file is not None:
-        # Streamlit trabaja con archivos subidos como bytes, por lo que los convertimos adecuadamente
+        # Extraer el texto del archivo
         if file.name.endswith('.pdf'):
             text = extract_text_from_pdf(file)
         elif file.name.endswith('.docx'):
@@ -131,93 +165,85 @@ if option == 'Archivo':
             text = extract_text_from_ppt(file)
         
         if text:
+            # Generar el resumen
             summary = generate_summary(text, num_sentences=5)
             
             # Contar palabras en la transcripción completa y en el resumen
             total_words_transcription = count_words(text)
             total_words_summary = count_words(summary)
             
-            # Crear tabla con los datos
-            summary_data = {
-                'Descripción': ['Palabras en la transcripción', 'Palabras en el resumen'],
-                'Cantidad de Palabras': [total_words_transcription, total_words_summary]
-            }
+            # Checkbox para mostrar/ocultar la transcripción completa
+            mostrar_transcripcion = st.checkbox("Mostrar transcripción completa")
             
-            #summary_df = pd.DataFrame(summary_data)
+            # Crear columnas para distribuir la transcripción y el resumen
+            col1, col2 = st.columns(2)
             
-            # Mostrar la transcripción en la primera columna
+            # Mostrar el resumen en la primera columna
             with col1:
-                st.subheader("Transcripción completa")
-                st.write(text)  # Muestra la transcripción completa
-                st.metric(label="Palabras Transcripción", value=total_words_transcription)
-            
-            # Mostrar el resumen en la segunda columna
-            with col2:
                 st.subheader("Resumen generado")
-                st.write(summary)  # Muestra el resumen generado
+                st.write(summary)
                 st.metric(label="Palabras Resumen", value=total_words_summary)
             
-            # st.write("Resumen generado del archivo:")
-            # st.write(wrap(summary))
-            
-            # Mostrar tabla con las estadísticas
-            #st.table(summary_df)
+            # Mostrar la transcripción completa si el checkbox está activado
+            if mostrar_transcripcion:
+                with col2:
+                    st.subheader("Transcripción completa")
+                    st.write(text)
+                    st.metric(label="Palabras Transcripción", value=total_words_transcription)
 
 # Procesar un video de YouTube
-elif option == 'YouTube':
+elif option == "YouTube":
     youtube_link = st.text_input('Introduce la URL del video de YouTube')
-    # --- SECCIÓN DE DISEÑO ---
-    # Crear columnas para distribuir la transcripción y el resumen
-    col1, spacer, col2 = st.columns([5, 1, 5])
     if youtube_link:
         try:
-            loader = YoutubeLoader.from_youtube_url(youtube_link, add_video_info=True, language=["es"])
-            transcripcion = loader.load()
+            # Extraer el ID del video de YouTube
+            video_id = youtube_link.split("v=")[1]
             
+            # Descargar la transcripción
+            transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=['es'])
             
-            text = transcripcion[0].page_content
+            # Unir las transcripciones en un solo texto
+            text = " ".join([entry['text'] for entry in transcript])
             
-            # Checkbox para mostrar la transcripción completa
-            # mostrar_transcripcion = st.checkbox('Mostrar transcripción completa')
+            if youtube_option == "Generar resumen":
+                # Generar el resumen
+                summary = generate_summary(text, num_sentences=5)
+                
+                # Contar palabras en la transcripción completa y en el resumen
+                total_words_transcription = count_words(text)
+                total_words_summary = count_words(summary)
+                
+                # Checkbox para mostrar/ocultar la transcripción completa
+                mostrar_transcripcion = st.checkbox("Mostrar transcripción completa")
+                
+                # Crear columnas para distribuir la transcripción y el resumen
+                col1, col2 = st.columns(2)
+                
+                # Mostrar el resumen en la primera columna
+                with col1:
+                    st.subheader("Resumen generado")
+                    st.write(summary)
+                    st.metric(label="Palabras Resumen", value=total_words_summary)
+                
+                # Mostrar la transcripción completa si el checkbox está activado
+                if mostrar_transcripcion:
+                    with col2:
+                        st.subheader("Transcripción completa")
+                        st.write(text)
+                        st.metric(label="Palabras Transcripción", value=total_words_transcription)
             
-            #if mostrar_transcripcion:
-            #    st.write("Transcripción completa:")
-            #    st.write(wrap(text))
-            
-            summary = generate_summary(text, num_sentences=5)
-            
-            # Contar palabras en la transcripción completa y en el resumen
-            total_words_transcription = count_words(text)
-            total_words_summary = count_words(summary)
-            
-            # Crear tabla con los datos
-            summary_data = {
-                'Descripción': ['Palabras en la transcripción', 'Palabras en el resumen'],
-                'Cantidad de Palabras': [total_words_transcription, total_words_summary]
-            }
-            
-            summary_df = pd.DataFrame(summary_data)
-            
-            # st.write("Resumen generado del video:")
-            # st.write(wrap(summary))
-            
-            # Mostrar la transcripción en la primera columna
-            with col1:
-                st.header("Transcripción completa")
-                st.metric(label="Palabras Transcripción", value=total_words_transcription)
-                st.write(text)  # Muestra la transcripción completa
-        
-        # Mostrar el resumen en la segunda columna
-            with col2:
-                st.header("Resumen generado")
-                st.metric(label="Palabras Resumen", value=total_words_summary)
-                st.subheader(f"Video de: {transcripcion[0].metadata['author']}" +
-                     f" con una duración de  {transcripcion[0].metadata['length']} segundos")
-                st.subheader(f"Título del video: {transcripcion[0].metadata['title']}")
-                st.write(summary)  # Muestra el resumen generado
-            
-            # Mostrar tabla con las estadísticas
-            # st.table(summary_df)
+            elif youtube_option == "Generar cuestionario":
+                # Generar el cuestionario
+                quiz = generate_quiz(text)
+                
+                if quiz:
+                    st.subheader("Cuestionario generado")
+                    st.write(quiz)
+                    
+                    # Botón para evaluar respuestas
+                    if st.button("Evaluar respuestas"):
+                        st.subheader("Respuestas correctas")
+                        st.write("Aquí se mostrarían las respuestas correctas.")  # Puedes expandir esta parte
         
         except Exception as e:
             st.error(f"Error al obtener la información del video. Vuelve a intentar con otro enlace. Detalles: {str(e)}")
