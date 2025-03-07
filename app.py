@@ -6,6 +6,7 @@ from youtube_transcript_api import YouTubeTranscriptApi
 import spacy
 import pytextrank
 import re
+import json
 import networkx as nx
 import pandas as pd
 from openai import OpenAI
@@ -18,6 +19,7 @@ nlp.add_pipe("textrank")
 client = OpenAI(
     base_url="https://integrate.api.nvidia.com/v1",
     api_key = "tu_clave_api_secreta"
+    
 )
 
 # --- FUNCIONES PARA CARGAR TEXTOS DE ARCHIVOS ---
@@ -126,18 +128,42 @@ def generate_summary(text, num_sentences=5):
 def count_words(text):
     return len(text.split())
 
-# --- FUNCIÓN PARA GENERAR CUESTIONARIO ---
+# --- FUNCIÓN PARA GENERAR CUESTIONARIO ESTRUCTURADO ---
 def generate_quiz(text):
     try:
+        prompt = '''Genera un cuestionario de 5 preguntas en formato JSON. Cada pregunta debe tener:
+        - 4 opciones (a, b, c, d)
+        - 1 respuesta correcta
+        - Explicación breve de la respuesta
+        Ejemplo de formato:
+        {
+            "preguntas": [
+                {
+                    "pregunta": "texto",
+                    "opciones": {"a": "op1", "b": "op2", "c": "op3", "d": "op4"},
+                    "respuesta": "a",
+                    "explicacion": "texto"
+                }
+            ]
+        }'''
+        
         completion = client.chat.completions.create(
             model="nvidia/llama-3.1-nemotron-70b-instruct",
-            messages=[{"role": "user", "content": f"Genera un cuestionario de 5 preguntas a partir del siguiente texto: {text}"}],
+            messages=[
+                {"role": "system", "content": "Eres un asistente que genera cuestionarios educativos en formato JSON válido."},
+                {"role": "user", "content": f"{prompt}\n\nTexto base: {text}"}
+            ],
             temperature=0.5,
             top_p=1,
             max_tokens=1024,
             stream=False
         )
-        return completion.choices[0].message.content
+        
+        # Extraer y validar el JSON
+        response = completion.choices[0].message.content
+        cleaned_response = response[response.find('{'):response.rfind('}')+1]
+        return json.loads(cleaned_response)
+        
     except Exception as e:
         st.error(f"Error al generar el cuestionario: {str(e)}")
         return None
@@ -168,29 +194,31 @@ if option == "Archivo":
             # Generar el resumen
             summary = generate_summary(text, num_sentences=5)
             
-            # Contar palabras en la transcripción completa y en el resumen
+            # Contar palabras
             total_words_transcription = count_words(text)
             total_words_summary = count_words(summary)
             
             # Checkbox para mostrar/ocultar la transcripción completa
             mostrar_transcripcion = st.checkbox("Mostrar transcripción completa")
             
-            # Crear columnas para distribuir la transcripción y el resumen
-            col1, col2 = st.columns(2)
+            # Sección de Resumen
+            st.subheader("Resumen generado")
+            st.write(summary)
             
-            # Mostrar el resumen en la primera columna
-            with col1:
-                st.subheader("Resumen generado")
-                st.write(summary)
+            # Métricas en columnas pequeñas
+            col_metric1, col_metric2 = st.columns(2)
+            with col_metric1:
                 st.metric(label="Palabras Resumen", value=total_words_summary)
             
-            # Mostrar la transcripción completa si el checkbox está activado
+            # Sección de Transcripción (si está activado el checkbox)
             if mostrar_transcripcion:
-                with col2:
-                    st.subheader("Transcripción completa")
-                    st.write(text)
+                st.divider()
+                st.subheader("Transcripción completa")
+                st.write(text)
+                with col_metric2:
                     st.metric(label="Palabras Transcripción", value=total_words_transcription)
 
+# Procesar un video de YouTube
 # Procesar un video de YouTube
 elif option == "YouTube":
     youtube_link = st.text_input('Introduce la URL del video de YouTube')
@@ -209,41 +237,95 @@ elif option == "YouTube":
                 # Generar el resumen
                 summary = generate_summary(text, num_sentences=5)
                 
-                # Contar palabras en la transcripción completa y en el resumen
+                # Contar palabras
                 total_words_transcription = count_words(text)
                 total_words_summary = count_words(summary)
                 
                 # Checkbox para mostrar/ocultar la transcripción completa
                 mostrar_transcripcion = st.checkbox("Mostrar transcripción completa")
                 
-                # Crear columnas para distribuir la transcripción y el resumen
-                col1, col2 = st.columns(2)
+                # Sección de Resumen
+                st.subheader("Resumen generado")
+                st.write(summary)
                 
-                # Mostrar el resumen en la primera columna
-                with col1:
-                    st.subheader("Resumen generado")
-                    st.write(summary)
+                # Métricas en columnas pequeñas
+                col_metric1, col_metric2 = st.columns(2)
+                with col_metric1:
                     st.metric(label="Palabras Resumen", value=total_words_summary)
                 
-                # Mostrar la transcripción completa si el checkbox está activado
+                # Sección de Transcripción (si está activado el checkbox)
                 if mostrar_transcripcion:
-                    with col2:
-                        st.subheader("Transcripción completa")
-                        st.write(text)
+                    st.divider()
+                    st.subheader("Transcripción completa")
+                    st.write(text)
+                    with col_metric2:
                         st.metric(label="Palabras Transcripción", value=total_words_transcription)
-            
+
             elif youtube_option == "Generar cuestionario":
-                # Generar el cuestionario
-                quiz = generate_quiz(text)
+                # Inicialización de variables de estado
+                if 'quiz_data' not in st.session_state:
+                    st.session_state.quiz_data = None
+                if 'user_answers' not in st.session_state:
+                    st.session_state.user_answers = {}
+                if 'show_answers' not in st.session_state:
+                    st.session_state.show_answers = False
                 
-                if quiz:
-                    st.subheader("Cuestionario generado")
-                    st.write(quiz)
+                # Botón para generar el cuestionario
+                if st.button("Generar Cuestionario"):
+                    with st.spinner('Generando cuestionario...'):
+                        st.session_state.quiz_data = generate_quiz(text)
+                        st.session_state.user_answers = {}
+                        st.session_state.show_answers = False
+                
+                if st.session_state.quiz_data:
+                    st.subheader("Cuestionario")
                     
-                    # Botón para evaluar respuestas
-                    if st.button("Evaluar respuestas"):
-                        st.subheader("Respuestas correctas")
-                        st.write("Aquí se mostrarían las respuestas correctas.")  # Puedes expandir esta parte
+                    # Mostrar preguntas con selección de opciones
+                    for i, pregunta in enumerate(st.session_state.quiz_data["preguntas"]):
+                        st.markdown(f"**{i+1}. {pregunta['pregunta']}**")
+                        
+                        # Crear opciones en formato radio button
+                        opciones = list(pregunta['opciones'].values())
+                        respuesta_key = f"pregunta_{i}"
+                        
+                        # Guardar la selección del usuario en session_state
+                        st.session_state.user_answers[respuesta_key] = st.radio(
+                            label="Selecciona una opción:",
+                            options=opciones,
+                            key=respuesta_key,
+                            index=None  # Ninguna selección por defecto
+                        )
+                        st.divider()
+                    
+                    # Botón para enviar respuestas
+                    if st.button("Enviar respuestas"):
+                        st.session_state.show_answers = True
+                    
+                    # Mostrar resultados después de enviar
+                    if st.session_state.show_answers:
+                        st.subheader("Resultados")
+                        correctas = 0
+                        
+                        for i, pregunta in enumerate(st.session_state.quiz_data["preguntas"]):
+                            respuesta_key = f"pregunta_{i}"
+                            user_answer = st.session_state.user_answers.get(respuesta_key, "Sin respuesta")
+                            correct_answer = pregunta['opciones'][pregunta['respuesta']]
+                            
+                            st.markdown(f"**Pregunta {i+1}:** {pregunta['pregunta']}")
+                            st.write(f"Tu respuesta: {user_answer}")
+                            st.write(f"Respuesta correcta: {correct_answer}")
+                            st.write(f"**Explicación:** {pregunta['explicacion']}")
+                            
+                            if user_answer == correct_answer:
+                                correctas += 1
+                                st.success("¡Correcto! ✅")
+                            else:
+                                st.error("Incorrecto ❌")
+                            
+                            st.divider()
+                        
+                        st.success(f"**Puntuación final:** {correctas}/{len(st.session_state.quiz_data['preguntas'])}")
+                        st.balloons()
         
         except Exception as e:
             st.error(f"Error al obtener la información del video. Vuelve a intentar con otro enlace. Detalles: {str(e)}")
