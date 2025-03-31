@@ -18,7 +18,7 @@ nlp.add_pipe("textrank")
 # Configurar el cliente de OpenAI (NVIDIA API)
 client = OpenAI(
     base_url="https://integrate.api.nvidia.com/v1",
-    api_key = "tu_clave_api_secreta"
+    api_key = "your_api_key"
     
 )
 

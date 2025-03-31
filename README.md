@@ -1,17 +1,33 @@
-# Explicación del Código: Generador de Resúmenes y Cuestionarios
 
-Este proyecto es una aplicación que permite generar resúmenes y cuestionarios a partir de archivos (PDF, DOCX, PPTX) o videos de YouTube. A continuación, se explica cómo funciona el código, paso a paso, tanto para personas con conocimientos técnicos como para aquellos sin experiencia en programación o matemáticas.
+# Generador de Resúmenes y Cuestionarios Automatizados
+
+## Descripción
+Aplicación web que procesa archivos (PDF, DOCX, PPTX) o transcripciones de YouTube para generar:
+- 📌 **Resúmenes automáticos** usando NLP (spaCy + TextRank)
+- ❓ **Cuestionarios interactivos** con IA (Llama 3 70B via NVIDIA API)
+
+**¿Por qué este proyecto?**  
+Este generador automatiza la creación de resúmenes y cuestionarios a partir de materiales de estudio, ayudando a estudiantes y profesores a reducir el tiempo de estudio y proporcionar evaluaciones rápidas basadas en contenidos ya existentes. Es ideal para situaciones en las que se requiere procesar grandes cantidades de texto o contenido audiovisual de manera eficiente.
+
+**¿A quién va dirigido?**  
+El sistema está diseñado para ser utilizado por:
+- **Estudiantes** que buscan repasar contenidos rápidamente mediante resúmenes y cuestionarios generados automáticamente.
+- **Profesores** que desean generar evaluaciones personalizadas o resúmenes de sus clases grabadas o materiales didácticos.
 
 ---
 
-## 1. **Introducción**
+## Capturas del Sistema
 
-El código utiliza varias bibliotecas de Python para procesar texto, generar resúmenes y crear cuestionarios. La aplicación está diseñada para ser fácil de usar, con una interfaz gráfica que permite a los usuarios subir archivos o introducir enlaces de YouTube.
+### 1. Análisis de Similitud (Histograma)
+![Histograma de similitud ](https://i.imgur.com/R43oMaF.jpg)
 
-<img src='https://media.discordapp.net/attachments/1090822505238892556/1313935312615116860/oTH6aNQAAAABJRU5ErkJggg.png?ex=67b3801e&is=67b22e9e&hm=8baed0853bf00f6995e8d1b76651685be8eb2fa03f83abe31747e66ff8374954&=&format=webp&quality=lossless&width=816&height=540'>
+*Umbral óptimo: 0.85 (configurable en el código)*
+
+*El histograma muestra cómo se realiza el análisis de similitud para determinar la relación entre las partes del texto. Un umbral de similitud más alto puede mejorar la precisión de los resúmenes.*
+
 ---
 
-## 2. **Librerías Utilizadas**
+## 1.5. **Librerías Utilizadas**
 
 - **Streamlit**: Para crear la interfaz gráfica de la aplicación.
 - **PyPDF2**: Para extraer texto de archivos PDF.
@@ -21,134 +37,271 @@ El código utiliza varias bibliotecas de Python para procesar texto, generar res
 - **spaCy**: Para procesar el texto y generar resúmenes.
 - **NetworkX**: Para crear grafos y analizar la similitud entre oraciones.
 - **OpenAI**: Para generar cuestionarios utilizando un modelo de lenguaje avanzado.
-
-
-
-## 3. **Funcionamiento del Código**
-
-<img src='https://media.discordapp.net/attachments/1090822505238892556/1313934481341677699/IICv1UQAAAABJRU5ErkJggg.png?ex=67b37f58&is=67b22dd8&hm=af36151ca7676a44c87e0c6272502da24e8782e68833e08f62127d95b94efae5&=&format=webp&quality=lossless&width=677&height=540'>
-
-### 3.1. **Carga del Modelo de spaCy**
-
-El código carga un modelo de lenguaje en español (`es_core_news_md`) y añade un componente llamado `textrank`, que se utiliza para extraer las oraciones más importantes del texto.
-
-```python
-nlp = spacy.load("es_core_news_md")
-nlp.add_pipe("textrank")
-```
-
 ---
 
-### 3.2. **Configuración del Cliente de OpenAI**
-
-Se configura el cliente de OpenAI para utilizar la API de NVIDIA, que permite generar cuestionarios a partir del texto.
-
-```python
-client = OpenAI(
-    base_url="https://integrate.api.nvidia.com/v1",
-    api_key = "tu_clave_api_secreta"
-)
-```
-
----
-
-### 3.3. **Extracción de Texto de Archivos**
-
-El código incluye funciones para extraer texto de diferentes tipos de archivos:
-
-- **PDF**: Usa `PyPDF2` para leer el archivo y extraer el texto de cada página.
-- **DOCX**: Usa `python-docx` para leer el archivo y extraer el texto de cada párrafo.
-- **PPTX**: Usa `python-pptx` para leer el archivo y extraer el texto de cada diapositiva.
-
-```python
-def extract_text_from_pdf(pdf_file):
-    # Código para extraer texto de PDF
-
-def extract_text_from_word(docx_file):
-    # Código para extraer texto de DOCX
-
-def extract_text_from_ppt(ppt_file):
-    # Código para extraer texto de PPTX
-```
-
----
-
-### 3.4. **Procesamiento del Texto y Generación de Resúmenes**
-
-El texto extraído se divide en "chunks" (fragmentos) de aproximadamente 200 palabras. Luego, se utiliza spaCy para procesar el texto y generar un resumen.
-
-```python
-def chunk_text(text, words_per_chunk=200):
-    # Divide el texto en chunks de 200 palabras
-
-def generate_summary(text, num_sentences=5):
-    # Limpia el texto y lo divide en chunks
-    # Procesa el texto con spaCy
-    # Crea un grafo de similitud entre oraciones
-    # Genera el resumen basado en las oraciones más importantes
-```
-
-#### 3.4.1. **Detalles Matemáticos**
+#### 1.5.1. **Detalles Matemáticos**
 
 - **Grafo de Similitud**: Se crea un grafo donde cada nodo representa una oración. Las aristas entre nodos se crean si la similitud entre dos oraciones es mayor que un umbral (0.90 en este caso).
 - **Similitud**: La similitud entre oraciones se calcula utilizando el modelo de spaCy, que utiliza embeddings (vectores numéricos) para representar el significado de las oraciones.
 
 ---
 
-### 3.5. **Generación de Cuestionarios**
+---
+### 2. Interfaz Principal
+![Menú del generador](https://imgur.com/68piWKJ.jpg)
 
-El código utiliza la API de OpenAI para generar un cuestionario a partir del texto. Se envía el texto al modelo de lenguaje, que genera preguntas y respuestas.
+*Selección entre archivos locales o URL de YouTube*
 
-```python
-def generate_quiz(text):
-    # Envía el texto a la API de OpenAI
-    # Recibe y muestra el cuestionario generado
+*La interfaz es fácil de usar y permite a los usuarios cargar archivos locales o pegar enlaces de YouTube directamente para comenzar a generar resúmenes y cuestionarios.*
+
+---
+
+### 3. Ejemplo de Resumen
+![Resultado de resumen automatizado](https://imgur.com/DZB47to.jpg)
+
+*Reducción de 728 palabras → 120 palabras (83% más conciso)*
+
+*El resumen es generado usando técnicas de NLP como TextRank, permitiendo una reducción considerable en la longitud del texto sin perder la esencia del contenido.*
+
+---
+
+### 4. Cuestionario Generado
+![Preguntas en formato JSON](https://imgur.com/seVXPDW.jpg)
+
+*Las 5 preguntas con opciones múltiples y explicaciones se pueden modificar en esta sección de codigo, donde se debe considerar que a mayor cantidad de preguntas mayor es el coste en tokens de la consulta y por ende la cantidad de solicitudes a la api se reduce, por eso para este caso se usaron 5*
+
+![Parametro modificacion de preguntas](https://imgur.com/BukIVZ0.jpg)
+
+*El cuestionario generado es interactivo y permite a los usuarios evaluar su comprensión del material. Además, ofrece explicaciones detalladas para cada respuesta.*
+
+---
+
+## Tecnologías Utilizadas
+
+### Descripción de Tecnologías:
+- **spaCy**: Utilizado para el procesamiento de lenguaje natural (NLP). Su capacidad para trabajar con grandes volúmenes de texto permite una eficiente generación de resúmenes.
+- **TextRank**: Algoritmo basado en grafos para extraer las frases más relevantes del texto, utilizado para la creación de resúmenes.
+- **Llama 3 70B**: Modelo de lenguaje de última generación de NVIDIA utilizado para generar preguntas interactivas y con sentido, alimentado por la API de NVIDIA.
+- **NVIDIA API**: Plataforma utilizada para acceder al modelo Llama 3 y generar preguntas personalizadas.
+
+```mermaid
+flowchart TD
+    A[Entrada] -->|Archivo PDF/DOCX/PPTX| B(Extracción de Texto)
+    A -->|URL de YouTube| C(Transcripción API)
+    B --> D[Texto Procesado]
+    C --> D
+    D --> E{Modo Seleccionado}
+    E -->|Generar Resumen| F[spaCy + TextRank]
+    E -->|Generar Cuestionario| G[Llama3 70B\nvía NVIDIA API]
+    F --> H[Resumen Automático\nReducción 80% palabras]
+    G --> I[Cuestionario JSON\n5 preguntas con opciones]
+    H --> J[(Salida:\nMarkdown/Interfaz)]
+    I --> J
+    K[Streamlit] -->|Interfaz Web| L[Usuario Final]
+
+    %% Estilos
+    classDef tech fill:#4CAF50,color:white,stroke:#388E3C;
+    classDef data fill:#2196F3,color:white,stroke:#1976D2;
+    classDef output fill:#FF9800,color:white,stroke:#F57C00;
+    classDef tool fill:#9C27B0,color:white,stroke:#7B1FA2;
+
+    class B,C,F,G,K tech;
+    class D,A data;
+    class H,I,J output;
+    class L tool;
+```
+
+```mermaid
+classDiagram
+    class Streamlit {
+        +file_uploader()
+        +text_input()
+        +button()
+    }
+    class spaCy {
+        +load("es_core_news_md")
+        +pipe("textrank")
+    }
+    class NVIDIA_API {
+        +base_url: "integrate.api.nvidia.com"
+        +model: "llama-3.1-nemotron-70b-instruct"
+    }
+    Streamlit --> spaCy
+    Streamlit --> NVIDIA_API
 ```
 
 ---
 
-### 3.6. **Interfaz Gráfica con Streamlit**
+## Cómo Usar
 
-La interfaz gráfica permite a los usuarios subir archivos o introducir enlaces de YouTube. Dependiendo de la opción seleccionada, la aplicación genera un resumen o un cuestionario.
+1. **Sube un archivo** (PDF/DOCX/PPTX) o **pega URL de YouTube**.
+2. **Elige el modo**:
+   - ✂️ **Resumen**: Genera un resumen basado en análisis de similitud de texto.
+   - 📝 **Cuestionario**: Genera un cuestionario interactivo basado en el contenido analizado.
+3. **Explora los resultados**:
+   - **Resumen**: Puedes exportarlo a **Markdown** o **PDF** para compartir o estudiar.
+   - **Cuestionario**: Te permite responder preguntas interactivas y verificar tu comprensión.
 
-```python
-st.title('Generador de Resúmenes y Cuestionarios a partir de Archivos o Videos de YouTube')
+### ¿Cómo se procesan los archivos?
+- **Archivos PDF/DOCX/PPTX**: El texto se extrae usando bibliotecas específicas como `PyPDF2` para PDFs y `python-docx` para documentos de Word. Luego, se procesa para generar el resumen o cuestionario.
+- **YouTube**: La API de transcripción extrae el audio del video y se convierte en texto. Luego, el texto se utiliza para generar el resumen o cuestionario.
 
-# Barra lateral para seleccionar la opción
-with st.sidebar:
-    st.header("Opciones")
-    option = st.radio("Selecciona una opción:", ("Archivo", "YouTube"))
+---
+
+## Recursos
+
+### Modelos
+| Nombre         | Uso                           | Licencia              |
+|----------------|-------------------------------|-----------------------|
+| `es_core_news_md` | Procesamiento de texto en español | MIT                   |
+| `Llama 3 70B`   | Generación de preguntas        | Propietaria (NVIDIA)   |
+
+### Datasets
+- Transcripciones de YouTube (a través de API pública).
+- Archivos subidos por usuarios.
+
+### Requisitos:
+- **API key de NVIDIA para Llama 3**: Necesaria para acceder a las capacidades del modelo.
+- **Conexión a internet**: Requerida para obtener las transcripciones de YouTube y hacer uso de la API de NVIDIA.
+
+---
+
+## Notas
+
+**Se requiere descargar la extension Markdown Preview Mermaid Support**
+-**esto para que se visualizen de buena manera los diagramas en formato mermaid**
+
+⚠️ **Limitaciones**:
+- **Precisión del resumen**: Aunque el sistema está diseñado para crear resúmenes precisos, la calidad depende del contenido y formato del texto. Algunos detalles pueden perderse en la reducción.
+- **Restricciones de YouTube**: El sistema puede tener dificultades para transcribir videos con restricciones de acceso, como los videos privados o protegidos por derechos de autor.
+  
+🛠️ **Código disponible en**: [GitHub/repo](https://github.com/simsimi2143/Sintetizador/tree/main)
+
+---
+
+# Guía de Instalación para el Generador de Resúmenes y Cuestionarios
+
+```markdown
+
+
+## Requisitos Previos
+
+- Python 3.10 o inferior (recomendado 3.9.13)
+- pip (gestor de paquetes de Python)
+- Git (opcional, solo si clonas el repositorio)
+
+## Instalación paso a paso
+
+### 1. Clonar el repositorio (opcional)
+
+```bash
+git clone https://github.com/simsimi2143/Sintetizador.git
+cd tu-repositorio
 ```
 
-<img src='https://cdn.discordapp.com/attachments/1036462454550577192/1340785480039665734/56d8b1ea-22af-447e-983e-bb50536fbf9a.png?ex=67b39f49&is=67b24dc9&hm=851631fe1b72449f6ce2db2bdd2c0d05ce6e56dc5ec2be50e209951f7cc2e93f&'>
----
+### 2. Crear un entorno virtual (recomendado)
 
-## 4. **Explicación Paso a Paso para Personas sin Conocimientos Técnicos**
+```bash
+python -m venv venv
+```
 
-1. **Subir un Archivo o Introducir un Enlace de YouTube**:
-   - Si eliges "Archivo", puedes subir un archivo PDF, DOCX o PPTX.
-   - Si eliges "YouTube", introduces la URL de un video.
+**Activar el entorno virtual:**
 
-2. **Procesamiento del Texto**:
-   - La aplicación extrae el texto del archivo o del video de YouTube.
-   - Divide el texto en partes más pequeñas para facilitar su análisis.
+- **Windows:**
+  ```bash
+  venv\Scripts\activate
+  ```
 
-3. **Generación del Resumen**:
-   - La aplicación analiza el texto y selecciona las oraciones más importantes.
-   - Muestra un resumen corto del contenido.
+- **Linux/MacOS:**
+  ```bash
+  source venv/bin/activate
+  ```
 
-4. **Generación del Cuestionario**:
-   - Si eliges generar un cuestionario, la aplicación crea preguntas basadas en el texto.
-   - Puedes responder las preguntas y la aplicación te dirá si son correctas.
+### 3. Instalar dependencias
 
-5. **Visualización de Resultados**:
-   - El resumen o el cuestionario se muestran en la pantalla.
-   - También puedes ver el texto completo si lo deseas.
+```bash
+pip install -r requirements.txt
+```
 
----
+### 4. Descargar el modelo de lenguaje para spaCy
 
-## 5. **Conclusión**
+```bash
+python -m spacy download es_core_news_md
+```
 
-Este proyecto es una herramienta útil para resumir contenido y generar cuestionarios de manera automática. Es ideal para estudiantes, profesores o cualquier persona que necesite procesar grandes cantidades de texto de manera eficiente.
+### 5. Configurar la API de NVIDIA (opcional)
 
+Si deseas usar la funcionalidad de generación de cuestionarios:
+
+1. Obtén una API key de NVIDIA en [developer.nvidia.com](https://developer.nvidia.com/)
+2. Edita el archivo principal (`app.py`) y reemplaza `"your_api_key"` con tu clave real
+
+### 6. Ejecutar la aplicación
+
+```bash
+streamlit run app.py
+```
+
+## Solución de Problemas Comunes
+
+### Error con spaCy en Python 3.11+
+
+Si recibes errores relacionados con spaCy, verifica que estás usando Python 3.10 o inferior:
+
+```bash
+python --version
+```
+
+Si necesitas cambiar de versión, puedes usar `pyenv`:
+
+```bash
+pyenv install 3.9.13
+pyenv global 3.9.13
+```
+
+### Problemas con las dependencias
+
+Si hay conflictos entre paquetes:
+
+1. Elimina el entorno virtual y créalo nuevamente
+2. Instala las dependencias exactas especificadas:
+
+```bash
+pip install --force-reinstall -r requirements.txt
+```
+
+### Error al procesar archivos
+
+- Para archivos PDF: Asegúrate de que no estén protegidos con contraseña
+- Para archivos DOCX/PPTX: Verifica que no estén corruptos
+
+## Estructura del Proyecto
+
+```
+tu-proyecto/
+├── app.py                # Archivo principal de la aplicación
+├── requirements.txt      # Lista de dependencias
+├── README.md             # Documentación del proyecto
+└── venv/                 # Entorno virtual (se crea al instalarlo)
+```
+
+## Notas Importantes
+
+- Esta aplicación fue probada con Python 3.9.13
+- El modelo de spaCy para español ocupa aproximadamente 40MB de espacio
+- Para videos de YouTube, necesitarás conexión a internet para obtener las transcripciones
+- La generación de cuestionarios requiere una API key válida de NVIDIA
+
+## Licencia
+
+Incluye aquí información sobre la licencia de tu proyecto si es necesario.
+```
+
+Puedes guardar este contenido en un archivo `INSTALL.md` o `GUIA_INSTALACION.md` en tu proyecto. Asegúrate de:
+
+1. Reemplazar las rutas y nombres de repositorio con los tuyos
+2. Actualizar la sección de licencia según corresponda
+3. Agregar cualquier información adicional específica de tu proyecto
+
+La guía incluye todos los pasos necesarios para instalar las dependencias específicas que mencionas, con especial atención a la versión de Python y los posibles problemas con spaCy.
 
